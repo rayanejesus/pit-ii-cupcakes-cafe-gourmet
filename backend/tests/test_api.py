@@ -84,6 +84,31 @@ def test_cors_preflight_for_catalog_route():
     assert "GET" in response.headers["access-control-allow-methods"]
 
 
+def test_cors_preflight_for_order_creation_with_idempotency_header():
+    response = client.options(
+        "/api/orders",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,idempotency-key",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "idempotency-key" in response.headers["access-control-allow-headers"].lower()
+
+
+def test_invalid_order_returns_json_without_persisting():
+    response = client.post(
+        "/api/orders",
+        headers={"Idempotency-Key": "invalid-json-key-0001"},
+        content='{"customer_name": "Incompleto"}',
+    )
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json()["detail"]
+
+
 def test_cors_rejects_unconfigured_origin():
     response = client.options(
         "/api/products",
