@@ -66,3 +66,29 @@ def test_invalid_stock_and_transition():
 def test_order_read_requires_management_token():
     response = client.get("/api/orders")
     assert response.status_code == 401
+
+
+def test_cors_preflight_for_catalog_route():
+    response = client.options(
+        "/api/products?search=",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "GET" in response.headers["access-control-allow-methods"]
+
+
+def test_cors_rejects_unconfigured_origin():
+    response = client.options(
+        "/api/products",
+        headers={
+            "Origin": "https://not-configured.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
