@@ -44,6 +44,7 @@ class OrderRequest(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=True)
     order: Mapped[Order] = relationship()
 

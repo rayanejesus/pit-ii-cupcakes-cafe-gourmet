@@ -1,3 +1,5 @@
+import hashlib
+import json
 from decimal import Decimal
 
 from fastapi import HTTPException
@@ -12,8 +14,19 @@ from app.schemas.orders import OrderCreate
 SHIPPING_FEE = Decimal("8.50")
 
 
+def canonical_order_payload(payload: OrderCreate) -> str:
+    data = payload.model_dump(mode="json")
+    data["items"] = sorted(data["items"], key=lambda item: (item["product_id"], item["quantity"]))
+    return json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def order_request_hash(payload: OrderCreate) -> str:
+    return hashlib.sha256(canonical_order_payload(payload).encode("utf-8")).hexdigest()
+
+
 def create_order(db: Session, payload: OrderCreate, idempotency_key: str) -> Order:
-    request = OrderRequest(idempotency_key=idempotency_key)
+    payload_hash = order_request_hash(payload)
+    request = OrderRequest(idempotency_key=idempotency_key, request_hash=payload_hash)
     db.add(request)
     try:
         db.flush()
@@ -24,6 +37,11 @@ def create_order(db: Session, payload: OrderCreate, idempotency_key: str) -> Ord
         )
         if existing_request is None:
             raise
+        if existing_request.request_hash != payload_hash:
+            raise HTTPException(
+                status_code=409,
+                detail="A chave de idempotência já foi usada com outro pedido.",
+            )
         if existing_request.order_id is None:
             raise HTTPException(status_code=409, detail="Pedido idempotente ainda está sendo processado.")
         return db.get(Order, existing_request.order_id)

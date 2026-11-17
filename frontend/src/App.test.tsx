@@ -17,6 +17,7 @@ describe("customer storefront", () => {
     expect(await screen.findByText("Red Velvet")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Buscar produtos"), { target: { value: "inexistente" } });
     await waitFor(() => expect(screen.queryByText("Red Velvet")).not.toBeInTheDocument());
+    expect(screen.getByText("Nenhum produto encontrado")).toBeInTheDocument();
   });
   it("adds a product to cart", async () => {
     render(<App />);

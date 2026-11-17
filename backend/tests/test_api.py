@@ -26,6 +26,7 @@ def test_health_and_catalog():
     products = client.get("/api/products").json()
     assert len(products) == 10
     assert any(product["name"] == "Red Velvet" for product in products)
+    assert len({product["image_url"] for product in products}) == 10
 
 
 def test_seed_is_idempotent():
@@ -124,3 +125,24 @@ def test_multiple_products_total_and_duplicate_request():
     assert first.json()["shipping"] == "8.50"
     assert first.json()["total"] == "64.20"
     assert len(first.json()["items"]) == 2
+
+
+def test_same_idempotency_key_with_different_payload_returns_conflict():
+    headers = {"Idempotency-Key": "different-payload-key-0001"}
+    first = client.post("/api/orders", json={
+        "customer_name": "Paula Souza",
+        "customer_email": "paula@example.com",
+        "address": "Rua Um, 10",
+        "payment_method": "PIX",
+        "items": [{"product_id": 4, "quantity": 1}],
+    }, headers=headers)
+    different = client.post("/api/orders", json={
+        "customer_name": "Paula Souza",
+        "customer_email": "paula@example.com",
+        "address": "Rua Dois, 20",
+        "payment_method": "PIX",
+        "items": [{"product_id": 4, "quantity": 2}],
+    }, headers=headers)
+    assert first.status_code == 201
+    assert different.status_code == 409
+    assert "chave de idempotência" in different.json()["detail"]
