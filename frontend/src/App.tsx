@@ -5,6 +5,19 @@ import type { CartItem, Category, Order, Product } from "./types/catalog";
 import "./index.css";
 
 const SHIPPING_FEE = 8.5;
+const FALLBACK_IMAGE = "/images/products/red-velvet.jpg";
+const PRODUCT_IMAGES: Record<string, string> = {
+  "Red Velvet": "/images/products/red-velvet.jpg",
+  "Chocolate Trufado": "/images/products/chocolate-trufado.jpg",
+  "Baunilha com Morango": "/images/products/baunilha-morango.jpg",
+  "Cenoura com Brigadeiro": "/images/products/cenoura-brigadeiro.jpg",
+  "Doce de Leite": "/images/products/doce-leite.jpg",
+  "Limão Siciliano": "/images/products/limao-siciliano.jpg",
+  "Espresso Gourmet": "/images/products/espresso-gourmet.jpg",
+  "Cappuccino Cremoso": "/images/products/cappuccino-cremoso.jpg",
+  "Latte de Baunilha": "/images/products/latte-baunilha.jpg",
+  "Café Especial Coado": "/images/products/cafe-especial-coado.jpg",
+};
 const money = (value: string | number) => `R$ ${Number(value).toFixed(2).replace(".", ",")}`;
 type CheckoutStep = "cart" | "review";
 type CheckoutData = { name: string; email: string; address: string; payment: "PIX" | "CARTAO" };
@@ -12,6 +25,10 @@ type CheckoutData = { name: string; email: string; address: string; payment: "PI
 function createIdempotencyKey() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function productImage(product: Product) {
+  return PRODUCT_IMAGES[product.name] ?? product.image_url ?? FALLBACK_IMAGE;
 }
 
 export default function App() {
@@ -101,7 +118,7 @@ export default function App() {
     </div></header>
     <main className="mx-auto max-w-6xl px-5 py-10"><section className="mb-10 rounded-3xl bg-pink p-8"><p className="mb-2 font-semibold text-orange">CAFÉ ARTESANAL • DOCES ESPECIAIS</p><h1 className="max-w-xl text-4xl font-black md:text-6xl">Pequenos momentos, grandes sabores.</h1><p className="mt-4 max-w-xl">Cupcakes feitos à mão e cafés selecionados para transformar sua pausa.</p></section>
       <div className="mb-8 flex flex-wrap gap-3"><label className="flex flex-1 items-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm"><Search size={18}/><input aria-label="Buscar produtos" className="w-full outline-none" placeholder="Buscar sabores..." value={search} onChange={event => setSearch(event.target.value)} /></label>{categories.map(cat => <button key={cat.id} className={`rounded-xl px-4 py-2 ${category === String(cat.id) ? "bg-orange text-white" : "bg-white"}`} onClick={() => setCategory(category === String(cat.id) ? "" : String(cat.id))}>{cat.name}</button>)}</div>
-      {filtered.length === 0 ? <div className="rounded-2xl bg-white p-8 text-center shadow-sm"><h2 className="text-xl font-bold">Nenhum produto encontrado</h2><p className="mt-2 text-gray-600">Tente buscar outro sabor ou remover o filtro de categoria.</p></div> : <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(product => <article className="overflow-hidden rounded-2xl bg-white shadow-sm" key={product.id}><img className="h-52 w-full object-cover" src={product.image_url} alt={product.name}/><div className="p-5"><p className="text-sm text-orange">{product.category.name}</p><h2 className="mt-1 text-xl font-bold">{product.name}</h2><p className="my-3 text-sm text-gray-600">{product.description}</p><div className="flex items-center justify-between"><strong>{money(product.price)}</strong><button className="rounded-lg bg-espresso px-4 py-2 text-sm text-white hover:bg-orange" onClick={() => add(product)}>Adicionar</button></div></div></article>)}</div>}
+      {filtered.length === 0 ? <div className="rounded-2xl bg-white p-8 text-center shadow-sm"><h2 className="text-xl font-bold">Nenhum produto encontrado</h2><p className="mt-2 text-gray-600">Tente buscar outro sabor ou remover o filtro de categoria.</p></div> : <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(product => <article className="overflow-hidden rounded-2xl bg-white shadow-sm" key={product.id}><img className="h-52 w-full object-cover" src={productImage(product)} alt={`Fotografia de ${product.name}`} loading="lazy" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = FALLBACK_IMAGE; }}/><div className="p-5"><p className="text-sm text-orange">{product.category.name}</p><h2 className="mt-1 text-xl font-bold">{product.name}</h2><p className="my-3 text-sm text-gray-600">{product.description}</p><div className="flex items-center justify-between"><strong>{money(product.price)}</strong><button className="rounded-lg bg-espresso px-4 py-2 text-sm text-white hover:bg-orange" onClick={() => add(product)}>Adicionar</button></div></div></article>)}</div>}
       {confirmation && <div role="status" className="mt-6 rounded-xl bg-pink p-4"><strong>Pedido confirmado com sucesso!</strong><p>Número do pedido: #{confirmation.id}</p><p>Status inicial: {confirmation.status === "AGUARDANDO_PAGAMENTO" ? "Aguardando pagamento" : confirmation.status}</p><div className="mt-2">{confirmation.items.map(item => <p key={`${item.product_name}-${item.quantity}`}>{item.quantity}x {item.product_name}</p>)}</div><p className="mt-2 font-bold">Total: {money(confirmation.total)}</p><p className="text-sm">Pagamento pendente (simulado).</p></div>}
       {message && <p role="alert" className="mt-6 rounded-xl bg-pink p-4">{message}</p>}
     </main>

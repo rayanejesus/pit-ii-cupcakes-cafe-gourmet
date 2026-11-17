@@ -15,6 +15,7 @@ describe("customer storefront", () => {
   it("renders products and filters by search", async () => {
     render(<App />);
     expect(await screen.findByText("Red Velvet")).toBeInTheDocument();
+    expect(screen.getByAltText("Fotografia de Red Velvet")).toHaveAttribute("src", "/images/products/red-velvet.jpg");
     fireEvent.change(screen.getByLabelText("Buscar produtos"), { target: { value: "inexistente" } });
     await waitFor(() => expect(screen.queryByText("Red Velvet")).not.toBeInTheDocument());
     expect(screen.getByText("Nenhum produto encontrado")).toBeInTheDocument();
