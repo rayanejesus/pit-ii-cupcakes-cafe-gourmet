@@ -1,3 +1,9 @@
+import os
+
+# The API tests use the local database and must never drop a shared database.
+os.environ.pop("DATABASE_URL", None)
+os.environ["ORDER_MANAGEMENT_TOKEN"] = "test-management-token"
+
 from fastapi.testclient import TestClient
 
 from app.database.connection import Base, engine
@@ -11,6 +17,7 @@ def setup_module():
 
 
 client = TestClient(app)
+management_headers = {"X-Order-Management-Token": "test-management-token"}
 
 
 def test_health_and_catalog():
@@ -18,6 +25,12 @@ def test_health_and_catalog():
     products = client.get("/api/products").json()
     assert len(products) == 10
     assert any(product["name"] == "Red Velvet" for product in products)
+
+
+def test_seed_is_idempotent():
+    seed()
+    seed()
+    assert len(client.get("/api/products").json()) == 10
 
 
 def test_order_recalculates_total_and_payment():
@@ -32,7 +45,7 @@ def test_order_recalculates_total_and_payment():
     order = response.json()
     assert order["subtotal"] == "37.80"
     assert order["total"] == "46.30"
-    paid = client.post(f"/api/orders/{order['id']}/pay")
+    paid = client.post(f"/api/orders/{order['id']}/pay", headers=management_headers)
     assert paid.status_code == 200
     assert paid.json()["status"] == "PAGO"
 
@@ -46,5 +59,10 @@ def test_invalid_stock_and_transition():
         "items": [{"product_id": 1, "quantity": 50}],
     })
     assert response.status_code == 409
-    transition = client.patch("/api/orders/1/status?status=ENTREGUE")
+    transition = client.patch("/api/orders/1/status?status=ENTREGUE", headers=management_headers)
     assert transition.status_code == 409
+
+
+def test_order_read_requires_management_token():
+    response = client.get("/api/orders")
+    assert response.status_code == 401

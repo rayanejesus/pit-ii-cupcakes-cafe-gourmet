@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -21,10 +22,18 @@ app = FastAPI(
     description="API acadêmica do Projeto Integrador Transdisciplinar II.",
     lifespan=lifespan,
 )
+configured_origins = os.environ.get("FRONTEND_ORIGINS")
+if configured_origins is None:
+    allowed_origins = ["http://localhost:5173"]
+else:
+    allowed_origins = [origin.strip().rstrip("/") for origin in configured_origins.split(",") if origin.strip()]
+    if not allowed_origins:
+        raise RuntimeError("FRONTEND_ORIGINS está definida, mas vazia.")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

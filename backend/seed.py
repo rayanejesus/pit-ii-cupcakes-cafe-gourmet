@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from app.database.connection import Base, SessionLocal, engine
 from app.models.catalog import Category, Product
+from app.models.orders import Order, OrderItem
 
 PRODUCTS = {
     "Cupcakes": [
@@ -26,18 +27,25 @@ PRODUCTS = {
 def seed():
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
-        if db.scalar(select(Category)):
-            return
         for category_name, products in PRODUCTS.items():
-            category = Category(name=category_name)
-            db.add(category)
-            db.flush()
+            category = db.scalar(select(Category).where(Category.name == category_name))
+            if category is None:
+                category = Category(name=category_name)
+                db.add(category)
+                db.flush()
             for name, description, ingredients, allergens, price in products:
-                db.add(Product(
-                    name=name, description=description, price=Decimal(price), stock=20,
-                    image_url=f"https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=800&q=80",
-                    ingredients=ingredients, allergens=allergens, available=True, category_id=category.id,
-                ))
+                product = db.scalar(
+                    select(Product).where(
+                        Product.category_id == category.id,
+                        Product.name == name,
+                    )
+                )
+                if product is None:
+                    db.add(Product(
+                        name=name, description=description, price=Decimal(price), stock=20,
+                        image_url=f"https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=800&q=80",
+                        ingredients=ingredients, allergens=allergens, available=True, category_id=category.id,
+                    ))
         db.commit()
 
 
