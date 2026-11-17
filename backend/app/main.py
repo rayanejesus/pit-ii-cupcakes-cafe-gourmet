@@ -26,7 +26,11 @@ configured_origins = os.environ.get("FRONTEND_ORIGINS")
 if configured_origins is None:
     allowed_origins = ["http://localhost:5173"]
 else:
-    allowed_origins = [origin.strip().rstrip("/") for origin in configured_origins.split(",") if origin.strip()]
+    allowed_origins = [
+        origin.strip().rstrip("/")
+        for origin in configured_origins.split(",")
+        if origin.strip()
+    ]
     if not allowed_origins:
         raise RuntimeError("FRONTEND_ORIGINS está definida, mas vazia.")
 
@@ -35,7 +39,7 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Order-Management-Token"],
+    allow_headers=["Content-Type", "Idempotency-Key", "X-Order-Management-Token"],
 )
 app.include_router(catalog.router)
 app.include_router(orders.router)
