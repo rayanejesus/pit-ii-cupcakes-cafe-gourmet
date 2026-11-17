@@ -209,3 +209,79 @@ somente nesse ambiente de teste. Isso não deve ser executado contra Supabase.
 - Não há pagamento real.
 - A proteção contra duplicidade depende de o cliente reutilizar a mesma chave
   quando repetir uma requisição; o frontend faz isso durante a confirmação.
+
+## Endurecimento da idempotência
+
+Cada criação de pedido calcula um SHA-256 de uma representação canônica dos
+dados relevantes do checkout: cliente, endereço, pagamento e itens
+(`product_id` e `quantity`). Os itens são ordenados antes do cálculo para que
+uma simples diferença de ordem não gere um pedido diferente.
+
+- Mesma chave e mesmo payload: retorna o pedido original.
+- Mesma chave e payload diferente: retorna `409 Conflict`.
+- A restrição única da chave continua sendo aplicada pelo banco, e o tratamento
+  de `IntegrityError` mantém o comportamento entre instâncias concorrentes.
+- O hash não inclui preço, subtotal, frete ou total enviados pelo cliente; esses
+  valores continuam sendo calculados exclusivamente no backend.
+
+Foi preparada a migração revisável
+`database/migrations/002_add_order_request_hash.sql`. Ela adiciona a coluna de
+forma incremental e não altera dados nem executa `DROP`. A coluna permanece
+nullable para permitir a existência de registros antigos criados antes do
+hash. Registros legados sem hash não devem ser reutilizados sem uma decisão de
+backfill; a aplicação não os aceita silenciosamente como equivalentes.
+
+### Evidências do endurecimento
+
+- Teste de mesma chave e mesmo payload retornando o mesmo identificador.
+- Teste de mesma chave e payload diferente retornando `409`.
+- Teste de chave obrigatória e tratamento de conflito preservado.
+- A concorrência continua protegida pela restrição única persistida no
+  PostgreSQL; não há estado de idempotência em memória da função serverless.
+
+## Entrega acadêmica v2.0
+
+### Etapas concluídas
+
+- Etapa 1: carrinho, revisão, valores server-side e confirmação idempotente.
+- Etapa 2: validação de dados, mensagens de carregamento/erro/sucesso e
+  confirmação detalhada.
+- Etapa 3: imagens distintas por produto, estado vazio de busca e ajustes de
+  layout responsivo preservando a identidade visual.
+- Etapa 4: PostgreSQL preservado, migração incremental revisável e nenhuma
+  operação destrutiva executada.
+- Etapa 5: testes automatizados, build de produção e checklist manual.
+- Etapa 6: laudo de qualidade, roteiro do vídeo e documentação de validação.
+
+### Evidências executadas nesta entrega
+
+- Backend: 14 testes aprovados.
+- Frontend: 2 arquivos de teste e 7 testes aprovados.
+- Build de produção Vite: aprovado.
+- `git diff --check`: aprovado.
+- Teste de catálogo confirmou 10 URLs de imagem distintas.
+- Testes de idempotência confirmaram repetição equivalente e conflito de
+  payload divergente.
+
+### Migrações e produção
+
+- A coluna `order_requests.request_hash` deve ser criada pela migração
+  `database/migrations/002_add_order_request_hash.sql`.
+- A tabela `order_requests` deve existir antes de criar pedidos na versão
+  endurecida; `backend/init_db.py` pode criar tabelas ausentes de forma
+  incremental.
+- Nenhuma migração foi executada no Supabase durante esta entrega.
+- A conexão real com PostgreSQL precisa ser validada no ambiente de produção
+  sem expor a URL ou credenciais.
+
+### Pendências para publicação
+
+- Configurar `DATABASE_URL`, `FRONTEND_ORIGINS` e
+  `ORDER_MANAGEMENT_TOKEN` no projeto backend da Vercel.
+- Configurar `VITE_API_URL` no projeto frontend da Vercel.
+- Remover/configurar a proteção SSO da Vercel que possa redirecionar
+  requisições `OPTIONS`.
+- Aplicar a migração revisada no PostgreSQL e validar `SELECT 1`, tabelas e
+  criação idempotente de pedido.
+- Executar o checklist manual e preencher os resultados reais dos cinco
+  participantes; nenhum resultado foi inventado neste documento.
