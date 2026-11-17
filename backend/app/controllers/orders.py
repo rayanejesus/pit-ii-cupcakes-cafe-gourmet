@@ -1,7 +1,7 @@
 import hmac
 import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.security import APIKeyHeader
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -24,8 +24,12 @@ def require_order_management_token(token: str | None = Depends(management_token_
 
 
 @router.post("", response_model=OrderResponse, status_code=201)
-def place_order(payload: OrderCreate, db: Session = Depends(get_db)):
-    return create_order(db, payload)
+def place_order(
+    payload: OrderCreate,
+    idempotency_key: str = Header(..., alias="Idempotency-Key", min_length=16, max_length=120),
+    db: Session = Depends(get_db),
+):
+    return create_order(db, payload, idempotency_key)
 
 
 @router.get("", response_model=list[OrderResponse], dependencies=[Depends(require_order_management_token)])

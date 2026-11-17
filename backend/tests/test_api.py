@@ -18,6 +18,7 @@ def setup_module():
 
 client = TestClient(app)
 management_headers = {"X-Order-Management-Token": "test-management-token"}
+order_headers = {"Idempotency-Key": "test-order-key-0001"}
 
 
 def test_health_and_catalog():
@@ -40,7 +41,7 @@ def test_order_recalculates_total_and_payment():
         "address": "Rua das Flores, 10",
         "payment_method": "PIX",
         "items": [{"product_id": 1, "quantity": 2}],
-    })
+    }, headers=order_headers)
     assert response.status_code == 201
     order = response.json()
     assert order["subtotal"] == "37.80"
@@ -57,7 +58,7 @@ def test_invalid_stock_and_transition():
         "address": "Avenida Central, 100",
         "payment_method": "CARTAO",
         "items": [{"product_id": 1, "quantity": 50}],
-    })
+    }, headers={"Idempotency-Key": "invalid-stock-key-0001"})
     assert response.status_code == 409
     transition = client.patch("/api/orders/1/status?status=ENTREGUE", headers=management_headers)
     assert transition.status_code == 409
@@ -92,3 +93,34 @@ def test_cors_rejects_unconfigured_origin():
     )
     assert response.status_code == 400
     assert "access-control-allow-origin" not in response.headers
+
+
+def test_order_requires_idempotency_key():
+    response = client.post("/api/orders", json={
+        "customer_name": "Sem Chave",
+        "customer_email": "sem-chave@example.com",
+        "address": "Avenida Central, 100",
+        "payment_method": "PIX",
+        "items": [{"product_id": 1, "quantity": 1}],
+    })
+    assert response.status_code == 422
+
+
+def test_multiple_products_total_and_duplicate_request():
+    payload = {
+        "customer_name": "Maria Souza",
+        "customer_email": "maria@example.com",
+        "address": "Rua das Flores, 10",
+        "payment_method": "PIX",
+        "items": [{"product_id": 2, "quantity": 1}, {"product_id": 3, "quantity": 2}],
+    }
+    headers = {"Idempotency-Key": "multiple-products-key-0001"}
+    first = client.post("/api/orders", json=payload, headers=headers)
+    duplicate = client.post("/api/orders", json=payload, headers=headers)
+    assert first.status_code == 201
+    assert duplicate.status_code == 201
+    assert duplicate.json()["id"] == first.json()["id"]
+    assert first.json()["subtotal"] == "55.70"
+    assert first.json()["shipping"] == "8.50"
+    assert first.json()["total"] == "64.20"
+    assert len(first.json()["items"]) == 2
