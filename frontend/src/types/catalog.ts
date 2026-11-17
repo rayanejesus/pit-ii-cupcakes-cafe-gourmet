@@ -4,4 +4,11 @@ export type Product = Category & {
   ingredients: string; allergens: string; available: boolean; category_id: number; category: Category;
 };
 export type CartItem = { product: Product; quantity: number };
-export type Order = { id: number; total: string; status: string; items: Array<{ product_name: string; quantity: number }>; };
+export type Order = {
+  id: number;
+  subtotal: string;
+  shipping: string;
+  total: string;
+  status: string;
+  items: Array<{ product_name: string; quantity: number }>;
+};

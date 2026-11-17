@@ -23,6 +23,19 @@ PRODUCTS = {
     ],
 }
 
+IMAGE_URLS = {
+    "Red Velvet": "https://images.unsplash.com/photo-1576618148400-f54bed99fcfd",
+    "Chocolate Trufado": "https://images.unsplash.com/photo-1486427944299-d1955d23e34d",
+    "Baunilha com Morango": "https://images.unsplash.com/photo-1587668178277-295251f900ce",
+    "Cenoura com Brigadeiro": "https://images.unsplash.com/photo-1519869325930-281384150729",
+    "Doce de Leite": "https://images.unsplash.com/photo-1558301211-0d8c8ddee6ec",
+    "Limão Siciliano": "https://images.unsplash.com/photo-1603532648955-039310d9ed75",
+    "Espresso Gourmet": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085",
+    "Cappuccino Cremoso": "https://images.unsplash.com/photo-1509042239860-f550ce710b93",
+    "Latte de Baunilha": "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd",
+    "Café Especial Coado": "https://images.unsplash.com/photo-1447933601403-0c6688de566e",
+}
+
 
 def seed():
     Base.metadata.create_all(bind=engine)
@@ -43,9 +56,11 @@ def seed():
                 if product is None:
                     db.add(Product(
                         name=name, description=description, price=Decimal(price), stock=20,
-                        image_url=f"https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=800&q=80",
+                        image_url=f"{IMAGE_URLS[name]}?auto=format&fit=crop&w=800&q=80",
                         ingredients=ingredients, allergens=allergens, available=True, category_id=category.id,
                     ))
+                else:
+                    product.image_url = f"{IMAGE_URLS[name]}?auto=format&fit=crop&w=800&q=80"
         db.commit()
 
 

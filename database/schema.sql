@@ -36,5 +36,11 @@ CREATE TABLE IF NOT EXISTS order_items (
   unit_price NUMERIC(10,2) NOT NULL,
   quantity INTEGER NOT NULL CHECK (quantity > 0)
 );
+CREATE TABLE IF NOT EXISTS order_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  request_hash TEXT,
+  order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE
+);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(customer_email);
